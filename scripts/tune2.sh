@@ -19,7 +19,7 @@ for v in 3.0 4.0; do
   cat > ~/.config/gtk-$v/settings.ini <<'EOT'
 [Settings]
 gtk-application-prefer-dark-theme=1
-gtk-font-name=Manrope 10
+gtk-font-name=Manrope 12
 gtk-icon-theme-name=Papirus-Dark
 gtk-cursor-theme-size=24
 EOT

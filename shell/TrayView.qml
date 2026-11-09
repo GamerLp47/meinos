@@ -11,7 +11,7 @@ GlassPanel {
     signal clicked()
 
     height: theme.barHeight
-    width: row.implicitWidth + 32
+    width: row.implicitWidth + 38
     radius: height / 2
 
     Row {
@@ -21,15 +21,15 @@ GlassPanel {
 
         Row {
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 9
+            spacing: 11
             Repeater {
                 model: ["network", "volume"]
                 Image {
                     required property string modelData
-                    width: 15
-                    height: 15
-                    sourceSize.width: 30
-                    sourceSize.height: 30
+                    width: 19
+                    height: 19
+                    sourceSize.width: 38
+                    sourceSize.height: 38
                     source: tray.iconDir + modelData + ".svg"
                     opacity: 0.82
                 }
@@ -38,7 +38,7 @@ GlassPanel {
 
         Rectangle {
             width: 1
-            height: 16
+            height: 20
             anchors.verticalCenter: parent.verticalCenter
             color: Qt.rgba(1, 1, 1, 0.12)
         }
@@ -51,7 +51,7 @@ GlassPanel {
                 text: tray.timeText
                 color: tray.theme.text
                 font.family: tray.theme.fontDisplay
-                font.pixelSize: 12
+                font.pixelSize: 14
                 font.weight: Font.DemiBold
             }
             Text {
@@ -59,7 +59,7 @@ GlassPanel {
                 text: tray.dateText
                 color: tray.theme.textDim
                 font.family: tray.theme.fontText
-                font.pixelSize: 9
+                font.pixelSize: 10
                 font.weight: Font.Medium
             }
         }

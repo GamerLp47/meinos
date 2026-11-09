@@ -256,7 +256,9 @@ ShellRoot {
             iconDir: root.assetDir + "icons/"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: ui.barHeight + ui.barMargin * 2 + 6
+            anchors.bottomMargin: ui.barHeight + ui.barMargin * 2 + 4
+            transformOrigin: Item.Bottom
+            scale: 1.3
             onCloseRequested: root.launcherOpen = false
             onActivated: function (entry) {
                 root.launcherOpen = false

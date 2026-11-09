@@ -28,9 +28,9 @@ QtObject {
     property string fontDisplay: "Sora"
 
     // Maße
-    property int barHeight: 38
-    property int barMargin: 8
-    property int iconTile: 26
+    property int barHeight: 46
+    property int barMargin: 10
+    property int iconTile: 32
 
     // Tempo der Bewegungen (1 = normal, 0 = aus)
     property real motion: 1.0

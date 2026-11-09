@@ -13,13 +13,13 @@ GlassPanel {
     signal appClicked(int index)
 
     height: theme.barHeight
-    width: row.implicitWidth + 24
+    width: row.implicitWidth + 28
     radius: height / 2
 
     Row {
         id: row
         anchors.centerIn: parent
-        spacing: 6
+        spacing: 8
 
         // Start-Knopf mit JR-Zeichen
         Item {
@@ -51,7 +51,7 @@ GlassPanel {
         Rectangle {
             visible: dock.apps.length > 0
             width: 1
-            height: 16
+            height: 20
             anchors.verticalCenter: parent.verticalCenter
             color: Qt.rgba(1, 1, 1, 0.14)
         }
