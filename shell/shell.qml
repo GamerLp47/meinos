@@ -1,144 +1,271 @@
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 
-// Erste Version der Leiste: Dock-Pille in der Mitte, Tray-Pille rechts.
+// meinos: Hintergrund, Leiste und Starter.
+// Die Teile selbst liegen in eigenen Dateien; hier wird nur verdrahtet.
 ShellRoot {
+    id: root
+
+    property bool launcherOpen: false
+
+    // Programme, die fest in der Leiste stehen (nur installierte werden gezeigt)
+    readonly property var pinned: ["vivaldi-stable", "discord", "steam", "cockos-reaper", "spotify", "thunar", "foot"]
+
+    readonly property var allApps: collectApps(DesktopEntries.applications.values)
+    readonly property var dockApps: collectDock(allApps, ToplevelManager.toplevels.values)
+
+    readonly property url assetDir: Qt.resolvedUrl("assets/")
+
+    onLauncherOpenChanged: {
+        if (launcherOpen)
+            Qt.callLater(launcher.reset)
+    }
+
+    function norm(s) {
+        var t = ("" + (s || "")).toLowerCase()
+        if (t.length > 8 && t.lastIndexOf(".desktop") === t.length - 8)
+            t = t.substring(0, t.length - 8)
+        return t
+    }
+
+    function iconFor(name) {
+        if (!name || name.length === 0)
+            return ""
+        if (name.charAt(0) === "/")
+            return "file://" + name
+        return Quickshell.iconPath(name, true)
+    }
+
+    function collectApps(list) {
+        var out = []
+        for (var i = 0; i < list.length; i++) {
+            var e = list[i]
+            if (!e || e.noDisplay)
+                continue
+            out.push({
+                id: norm(e.id),
+                name: e.name,
+                sub: e.genericName || e.comment || "",
+                icon: iconFor(e.icon),
+                ref: e
+            })
+        }
+        return out
+    }
+
+    function findApp(apps, id) {
+        var n = norm(id)
+        if (n.length === 0)
+            return null
+        for (var i = 0; i < apps.length; i++) {
+            if (apps[i].id === n)
+                return apps[i]
+        }
+        // z. B. "org.xfce.thunar" passt auf "thunar"
+        var tail = n.substring(n.lastIndexOf(".") + 1)
+        for (var j = 0; j < apps.length; j++) {
+            if (apps[j].id === tail || apps[j].id.substring(apps[j].id.lastIndexOf(".") + 1) === n)
+                return apps[j]
+        }
+        return null
+    }
+
+    function collectDock(apps, tops) {
+        var out = []
+        var byId = {}
+        var i
+
+        for (i = 0; i < pinned.length; i++) {
+            var a = findApp(apps, pinned[i])
+            if (a && !byId[a.id]) {
+                var item = { id: a.id, name: a.name, icon: a.icon, ref: a.ref, top: null, running: false, active: false }
+                byId[a.id] = item
+                out.push(item)
+            }
+        }
+
+        for (i = 0; i < tops.length; i++) {
+            var t = tops[i]
+            if (!t)
+                continue
+            var app = findApp(apps, t.appId)
+            var key = app ? app.id : norm(t.appId)
+            if (key.length === 0)
+                continue
+            var it = byId[key]
+            if (!it) {
+                it = {
+                    id: key,
+                    name: app ? app.name : t.appId,
+                    icon: app ? app.icon : iconFor(t.appId),
+                    ref: app ? app.ref : null,
+                    top: null, running: false, active: false
+                }
+                byId[key] = it
+                out.push(it)
+            }
+            it.running = true
+            if (!it.top || t.activated)
+                it.top = t
+            if (t.activated)
+                it.active = true
+        }
+        return out
+    }
+
+    function dockClicked(index) {
+        var it = dockApps[index]
+        if (!it)
+            return
+        if (it.top)
+            it.top.activate()
+        else if (it.ref)
+            it.ref.execute()
+    }
+
+    function power(action) {
+        if (action === "poweroff")
+            runner.command = ["systemctl", "poweroff"]
+        else if (action === "reboot")
+            runner.command = ["systemctl", "reboot"]
+        else
+            runner.command = ["hyprctl", "dispatch", "exit"]
+        runner.running = true
+    }
+
+    Theme {
+        id: ui
+    }
+
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
     }
 
+    Process {
+        id: runner
+    }
+
+    // Erlaubt später ein Tastenkürzel: quickshell ipc call launcher toggle
+    IpcHandler {
+        target: "launcher"
+        function toggle(): void {
+            root.launcherOpen = !root.launcherOpen
+        }
+    }
+
+    // Hintergrundbild
     Variants {
         model: Quickshell.screens
 
         PanelWindow {
             required property var modelData
             screen: modelData
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+            exclusionMode: ExclusionMode.Ignore
+            color: "#0c0c12"
+            WlrLayershell.layer: WlrLayer.Background
+            WlrLayershell.namespace: "meinos-wallpaper"
 
+            Wallpaper {
+                anchors.fill: parent
+            }
+        }
+    }
+
+    // Leiste
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            required property var modelData
+            screen: modelData
             anchors {
                 left: true
                 right: true
                 bottom: true
             }
-            implicitHeight: 68
+            implicitHeight: ui.barHeight + ui.barMargin * 2
             color: "transparent"
             WlrLayershell.namespace: "meinos-bar"
 
-            // Dock-Pille (Mitte)
-            Rectangle {
-                id: dock
+            DockView {
+                theme: ui
+                apps: root.dockApps
+                logoSource: root.assetDir + "logo.png"
+                launcherOpen: root.launcherOpen
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 10
-                height: 48
-                width: dockRow.implicitWidth + 24
-                radius: height / 2
-                color: Qt.rgba(0.094, 0.090, 0.118, 0.55)
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.12)
-
-                Row {
-                    id: dockRow
-                    anchors.centerIn: parent
-                    spacing: 8
-
-                    // Start-Knopf
-                    Rectangle {
-                        width: 34; height: 34; radius: 11
-                        color: Qt.rgba(1, 1, 1, 0.14)
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.2)
-                        Text {
-                            anchors.centerIn: parent
-                            text: "JR"
-                            color: "white"
-                            font.pixelSize: 12
-                            font.weight: Font.DemiBold
-                        }
-                    }
-
-                    Rectangle {
-                        width: 1; height: 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: Qt.rgba(1, 1, 1, 0.15)
-                    }
-
-                    // Platzhalter-Apps
-                    Repeater {
-                        model: [
-                            { t: "V", c: "#c0292b" },
-                            { t: "D", c: "#5865f2" },
-                            { t: "S", c: "#1b6fa8" },
-                            { t: "R", c: "#3a8f5c" },
-                            { t: "M", c: "#1db954" },
-                            { t: "F", c: "#c9a227" }
-                        ]
-
-                        Rectangle {
-                            required property var modelData
-                            width: 34; height: 34; radius: 11
-                            color: modelData.c
-                            scale: area.containsMouse ? 1.12 : 1.0
-                            Behavior on scale {
-                                SpringAnimation { spring: 4; damping: 0.3 }
-                            }
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData.t
-                                color: "white"
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                            }
-                            MouseArea {
-                                id: area
-                                anchors.fill: parent
-                                hoverEnabled: true
-                            }
-                        }
-                    }
+                anchors.bottomMargin: ui.barMargin
+                onStartClicked: root.launcherOpen = !root.launcherOpen
+                onAppClicked: function (index) {
+                    root.dockClicked(index)
                 }
             }
 
-            // Tray-Pille (rechts)
-            Rectangle {
+            TrayView {
+                theme: ui
+                iconDir: root.assetDir + "icons/"
+                timeText: Qt.formatDateTime(clock.date, "HH:mm")
+                dateText: clock.date.toLocaleDateString(Qt.locale("de_DE"), "ddd d. MMM")
                 anchors.right: parent.right
                 anchors.rightMargin: 12
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 10
-                height: 48
-                width: trayRow.implicitWidth + 28
-                radius: height / 2
-                color: Qt.rgba(0.094, 0.090, 0.118, 0.55)
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.12)
+                anchors.bottomMargin: ui.barMargin
+            }
+        }
+    }
 
-                Row {
-                    id: trayRow
-                    anchors.centerIn: parent
-                    spacing: 12
+    // Starter (liegt über allem, schließt bei Klick daneben oder Esc)
+    PanelWindow {
+        id: launcherWin
+        visible: root.launcherOpen
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+        exclusionMode: ExclusionMode.Ignore
+        color: "transparent"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        WlrLayershell.namespace: "meinos-launcher"
 
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "WLAN  Ton"
-                        color: Qt.rgba(1, 1, 1, 0.7)
-                        font.pixelSize: 12
-                    }
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        Text {
-                            text: Qt.formatDateTime(clock.date, "hh:mm")
-                            color: "white"
-                            font.pixelSize: 14
-                            font.weight: Font.DemiBold
-                        }
-                        Text {
-                            text: Qt.formatDateTime(clock.date, "ddd d. MMM")
-                            color: Qt.rgba(1, 1, 1, 0.6)
-                            font.pixelSize: 10
-                        }
-                    }
-                }
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(0, 0, 0, 0.22)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.launcherOpen = false
+        }
+
+        LauncherView {
+            id: launcher
+            theme: ui
+            entries: root.allApps
+            iconDir: root.assetDir + "icons/"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: ui.barHeight + ui.barMargin * 2 + 6
+            onCloseRequested: root.launcherOpen = false
+            onActivated: function (entry) {
+                root.launcherOpen = false
+                if (entry && entry.ref)
+                    entry.ref.execute()
+            }
+            onPowerRequested: function (action) {
+                root.launcherOpen = false
+                root.power(action)
             }
         }
     }

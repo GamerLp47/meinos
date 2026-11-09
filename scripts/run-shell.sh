@@ -3,6 +3,8 @@
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export WAYLAND_DISPLAY=$(ls "$XDG_RUNTIME_DIR" | grep -m1 -E '^wayland-[0-9]+$')
 export QT_QUICK_BACKEND=${QT_QUICK_BACKEND:-software}
+export QS_ICON_THEME=${QS_ICON_THEME:-Papirus-Dark}
+export LANG=${LANG:-C.UTF-8}
 echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
 pkill -x quickshell 2>/dev/null
 cd "$(dirname "$0")/.." || exit 1
