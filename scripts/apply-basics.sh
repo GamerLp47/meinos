@@ -2,6 +2,8 @@
 # Grundlagen: Leiste startet automatisch, SUPER+R / SUPER+Leertaste öffnet den Starter,
 # Thunar als Dateimanager, weinroter Rahmen, Fenster am Rand greifbar.
 f=~/.config/hypr/hyprland.lua
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+export HYPRLAND_INSTANCE_SIGNATURE=$(ls -t "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
 [ -f "$f.vorbasics" ] || cp "$f" "$f.vorbasics"
 
 sed -i 's|^local fileManager = .*|local fileManager = "thunar"|' "$f"
