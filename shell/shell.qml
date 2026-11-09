@@ -216,7 +216,7 @@ ShellRoot {
                 timeText: Qt.formatDateTime(clock.date, "HH:mm")
                 dateText: clock.date.toLocaleDateString(Qt.locale("de_DE"), "ddd d. MMM")
                 anchors.right: parent.right
-                anchors.rightMargin: 12
+                anchors.rightMargin: 10
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: ui.barMargin
             }
